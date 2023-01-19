@@ -9,15 +9,30 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@chakra-ui/react": "^2.4.9",
+    "@emotion/react": "^11.10.5",
+    "@emotion/styled": "^11.10.5",
+    "@ethersproject/providers": "^5.7.2",
+    "@libp2p/webrtc": "^1.0.2",
     "@next/font": "13.1.2",
+    "@semaphore-protocol/contracts": "^3.0.0-beta.7",
+    "@semaphore-protocol/identity": "^3.0.0-beta.7",
     "@types/node": "18.11.18",
     "@types/react": "18.0.27",
     "@types/react-dom": "18.0.10",
     "eslint": "8.32.0",
     "eslint-config-next": "13.1.2",
+    "ethers": "^5.7.2",
+    "framer-motion": "^8.5.0",
+    "js-waku": "^0.30.0",
     "next": "13.1.2",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+    "rlnjs": "github:Rate-Limiting-Nullifier/rlnjs#refactor/v2",
+    "styled-components": "^5.3.6",
     "typescript": "4.9.4"
+  },
+  "devDependencies": {
+    "@types/styled-components": "^5.1.26"
   }
 }
