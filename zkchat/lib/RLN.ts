@@ -1,5 +1,5 @@
 import { GOERLI } from "zkchat/utils/checkChain";
-import { Registry, RLN as RLNjs, RLNFullProof } from "rlnjs" 
+import { genExternalNullifier, Registry, RLN as RLNjs, RLNFullProof, Cache} from "rlnjs" 
 import { Contract, ethers } from "ethers";
 import { RLN_ABI, RLN_ADDRESS } from "zkchat/rln/contractInfo";
 import { Web3Provider } from "@ethersproject/providers";
@@ -7,28 +7,51 @@ import * as path from 'path'
 import { Identity } from '@semaphore-protocol/identity';
 import * as fs from 'fs'
 
-/* zkey file path */
-const vkey = JSON.parse(fs.readFileSync("zkchat/zkeyFiles/verification_key.json", "utf-8"))
-
-// cache class has rln_identifier (addProof to cache, evaluateNullifierAtEpoch),
+/* needed file paths */
+const vkeyPath = path.join("./zkeyFiles", "rln", "verification_key.json")
+const vkey = JSON.parse(fs.readFileSync(vkeyPath, "utf-8"))
+const wasmFilePath = path.join("./zkeyFiles", "rln", "rln.wasm")
+const finalZkeyPath = path.join("./zkeyFiles", "rln", "rln_final.zkey")
 
 export class RLN {
     public registry: Registry
     public identityCommitments: bigint[]
-    // public identifier: Identity
     public contract: Contract
-    public rlnjsInstance: RLNjs
+    public rlnInstance: RLNjs
+    public cache: Cache
+    private identity: Identity
+    private identityCommitment: bigint
+    private memIndex: number
 
-    constructor(provider?: ethers.providers.Provider) {
+    constructor(existingIdentity?: string, provider?: ethers.providers.Provider) {
+        // RLN
         this.contract = new ethers.Contract(RLN_ADDRESS, RLN_ABI) // might need to add back provider
-        this.registry = new Registry(20)
-        this.rlnjsInstance = new RLNjs("../zkeyFiles/rln.wasm", "./zkeyFiles/rln_final.zkey", vkey)
-        // this.identifier = this.rlnjsInstance.identity
+        this.registry = new Registry()
+        this.identity = (existingIdentity) ? new Identity(existingIdentity) : new Identity()
+        this.rlnInstance = new RLNjs(wasmFilePath, finalZkeyPath, vkey, undefined, this.identity)
         this.identityCommitments = []
+        this.cache = new Cache(this.rlnInstance.rlnIdentifier)
+
+        // RLN member
+        this.identityCommitment = this.identity.getCommitment() 
+        this.registry.addMember(this.identityCommitment)
+        this.memIndex = this.registry.indexOf(this.identityCommitment)
     }
 
     public async verifyProof(rlnProof: RLNFullProof) {
       return await RLNjs.verifyProof(vkey, rlnProof)
+    }
+
+    public getIdentityAsString() {
+      return this.identity.toString()
+    }
+
+    // generateProof 
+    public async generateRLNProof(msg: string, epochStr: string) {
+      const epoch = genExternalNullifier(epochStr)
+      const merkleProof = await this.registry.generateMerkleProof(this.identityCommitment)
+      const proof = this.rlnInstance.genProof(msg, merkleProof, epoch)
+      return proof
     }
 
     /* construct RLN member tree locally */
@@ -46,61 +69,13 @@ export class RLN {
         this.registry.addMember(event.args.memkey)
       })
     }
-} 
-
-/* 
-If existing identity, pass in identity.toString() to constructor
-*/
-
-export class RLNMember {
-    private identity: Identity
-    private identityCommitment: bigint
-    private memIndex: number
-    public rln: RLN
-
-    constructor (
-        rln: RLN,
-        existingIdentity?: string, 
-    ) {
-        this.rln = rln
-        this.identity = (existingIdentity) ? new Identity(existingIdentity) : new Identity()
-        this.identityCommitment = this.identity.getCommitment() 
-        this.rln.registry.addMember(this.identityCommitment)
-        this.memIndex = this.rln.registry.indexOf(this.identityCommitment)
-    }
-
-    public getIdentityAsString() {
-      return this.identity.toString()
-    }
-
-    public async generateProof() {
-      const merkleProof = await this.rln.registry.generateMerkleProof(this.identityCommitment)
-      return merkleProof
-    }
-
-    public generateRLNcredentials(appName: string) {
-      return { 
-        "application": appName, 
-        // "appIdentifier": this.rln.identifier,
-        "credentials": [{
-          "key": this.identity.getNullifier(),
-          "commitment": this.identityCommitment,
-          "membershipGroups": [{
-            "chainId": GOERLI, // chainge to optimism when time
-            "contract": this.rln.contract,
-            "treeIndex": this.rln.registry.indexOf(this.identityCommitment)
-          }]
-        }],
-        "version": 1 // change
-      }
-    }
 
     /* Allow new user registraction with rln contract for rln registry */
     public async registerUserOnRLNContract(provider: Web3Provider) {
-      const price = await this.rln.contract.MEMBERSHIP_DEPOSIT()
+      const price = await this.contract.MEMBERSHIP_DEPOSIT()
       const signer = provider.getSigner()
 
-      const rlnContractWithSigner = this.rln.contract.connect(signer)
+      const rlnContractWithSigner = this.contract.connect(signer)
       const txResponse = await rlnContractWithSigner.register(this.identityCommitment, {value: price})
       console.log("Transaction broadcasted: ", txResponse)
 
@@ -109,4 +84,32 @@ export class RLNMember {
 
       this.memIndex = txReceipt.events[0].args.index.toNumber()
     }
-}
+
+    /* */
+    public addProofToCache(proof: RLNFullProof) {
+      const result = this.cache.addProof(proof)
+      if ("breach") {
+        this.registry.slashMember(result.secret) // slash the member id commitment
+      }
+      // TODO: slash on contract
+    }
+
+
+    /* generate RLN credentials */
+    public generateRLNcredentials(appName: string) {
+      return { 
+        "application": appName, 
+        "appIdentifier": this.rlnInstance.rlnIdentifier,
+        "credentials": [{
+          "key": this.identity.getNullifier(),
+          "commitment": this.identityCommitment,
+          "membershipGroups": [{
+            "chainId": GOERLI, // chainge to optimism when time
+            "contract": this.contract,
+            "treeIndex": this.registry.indexOf(this.identityCommitment)
+          }]
+        }],
+        "version": 1 // change
+      }
+    }
+} 

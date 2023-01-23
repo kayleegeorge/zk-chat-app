@@ -3,7 +3,7 @@ import { ChatRoom } from "zkchat/lib/ChatRoom"
 import { RoomType } from "zkchat/types/ChatRoomOptions"
 import { checkChain, GOERLI } from "zkchat/utils/checkChain"
 import { Identity } from "@semaphore-protocol/identity"
-import { RLN, RLNMember } from "zkchat/lib/RLN"
+import { RLN } from "zkchat/lib/RLN"
 
 export default class ChatApp {
     public appName: string
