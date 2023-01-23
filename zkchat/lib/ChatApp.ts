@@ -14,11 +14,11 @@ export default class ChatApp {
     public constructor(
         appName: string,
         provider: Web3Provider,
-        rln: RLN
+        existingIdentity: string
       ) {
         this.appName = appName
         this.provider = provider
-        this.rln = rln
+        this.rln = new RLN(existingIdentity, provider)
     
         this.chatRoomStore = new Map<string, ChatRoom>()
       }
@@ -34,19 +34,18 @@ export default class ChatApp {
     /* app-level user registration: add user to chatApp and RLN registry */
     public async registerUser(existingIdentity?: string) {
       this.rln.constructRLNMemberTree() 
-      const rlnMember = new RLNMember(this.rln, existingIdentity)
-      await rlnMember.registerUserOnRLNContract(this.provider)
-      return rlnMember
+      await this.rln.registerUserOnRLNContract(this.provider) // TODO: maybe this not needed? investigate
+      return this.rln.identity
     }
 
     /* create chat room */
-    public createChatRoom(name: string, roomType: RoomType, rlnMember: RLNMember, chatMembers: string[]) {
+    public createChatRoom(name: string, roomType: RoomType, identity: string, chatMembers: string[]) {
       const contentTopic = `/${this.appName}/0.0.1/${roomType}-${name}/proto/`
       if (contentTopic in this.chatRoomStore) {
         console.log('Error: Please choose different chat name.')
       }
       if (chatMembers) {
-        const chatroom = new ChatRoom(contentTopic, roomType, this.provider, rlnMember, chatMembers, this.rln)
+        const chatroom = new ChatRoom(contentTopic, roomType, this.provider, chatMembers, this.rln)
         this.chatRoomStore.set(contentTopic, chatroom)
         return chatroom
       } else {

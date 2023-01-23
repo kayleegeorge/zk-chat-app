@@ -2,11 +2,9 @@ import { Message, RateLimitProof, WakuLight } from "js-waku/lib/interfaces"
 import { Web3Provider } from "@ethersproject/providers"
 import { RoomType } from "zkchat/types/ChatRoomOptions"
 import { UnsubscribeFunction } from "js-waku/lib/waku_filter"
-import { MembershipKey, Proof, RLNDecoder, RLNEncoder, RLNInstance } from "../../node_modules/@waku/rln/dist/index.d"
 import { ChatMessage } from "zkchat/types/ChatMessage"
-import { dateToEpoch } from "zkchat/utils/formatting"
 import { Connection, ConnectionMethod, ProofState } from "zkchat/lib/Connection"
-import { RLN, RLNMember } from "zkchat/lib/RLN"
+import { RLN } from "zkchat/lib/RLN"
 import { RLNFullProof } from "rlnjs"
 import { useReducer } from "react"
 
@@ -28,7 +26,6 @@ export class ChatRoom {
     public rlnInstance: RLN
     public provider: Web3Provider 
     public connection: Connection
-    private rlnMember: RLNMember
     private chatMembers: string[]
     public unsubscribeWaku?: UnsubscribeFunction 
 
@@ -36,7 +33,6 @@ export class ChatRoom {
         contentTopic: string,
         roomType: RoomType,
         provider: Web3Provider,
-        rlnMember: RLNMember, 
         chatMembers: string[],
         rlnInstance: RLN,
     ) {
@@ -44,12 +40,11 @@ export class ChatRoom {
         this.roomType = roomType
         this.provider = provider
         this.rlnInstance = rlnInstance
-        this.rlnMember = rlnMember
         this.chatMembers = chatMembers
         this.chatStore = []
 
         const [messages, updateChatStore] = useReducer(this.reduceMessages, this.chatStore)
-        this.connection = new Connection(ConnectionMethod.Waku, this.rlnInstance, this.rlnMember, updateChatStore, this.contentTopic) 
+        this.connection = new Connection(ConnectionMethod.Waku, this.rlnInstance, this.rlnInstance.identity, updateChatStore, this.contentTopic) 
     }
 
     /* retrieve Store Messages */

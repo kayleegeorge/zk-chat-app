@@ -16,6 +16,11 @@ import { Input, Button, InputGroup, InputRightElement, Flex, Container } from '@
 //   }
 // }
 
+// cache their identity in local storage, and check if there, if so pull that and pass
+// in as an existing identity 
+
+// if not an identity --> load a new identity 
+
 export default function Home() {
   const [provider, setProvider] = useState<Web3Provider>()
   const [RLNInstance, setRLNInstance] = useState<RLN>()

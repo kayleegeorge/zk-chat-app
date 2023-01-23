@@ -19,7 +19,7 @@ export class RLN {
     public contract: Contract
     public rlnInstance: RLNjs
     public cache: Cache
-    private identity: Identity
+    public identity: Identity
     private identityCommitment: bigint
     private memIndex: number
 
@@ -85,15 +85,17 @@ export class RLN {
       this.memIndex = txReceipt.events[0].args.index.toNumber()
     }
 
-    /* */
+    /* handle adding proof to cache */
     public addProofToCache(proof: RLNFullProof) {
       const result = this.cache.addProof(proof)
+      
+      // if breached, slash the member id commitment
       if ("breach") {
-        this.registry.slashMember(result.secret) // slash the member id commitment
+        this.registry.slashMember(result.secret) 
+        const withdrawRes = this.contract.withdraw(result.secret) // might need to add payable receiver
+        console.log("member withdrawn: ", withdrawRes)
       }
-      // TODO: slash on contract
     }
-
 
     /* generate RLN credentials */
     public generateRLNcredentials(appName: string) {
