@@ -1,4 +1,3 @@
-import { Message, RateLimitProof, WakuLight } from "js-waku/lib/interfaces"
 import { Web3Provider } from "@ethersproject/providers"
 import { RoomType } from "zkchat/types/ChatRoomOptions"
 import { UnsubscribeFunction } from "js-waku/lib/waku_filter"
@@ -6,7 +5,6 @@ import { ChatMessage } from "zkchat/types/ChatMessage"
 import { Connection, ConnectionMethod, ProofState } from "zkchat/lib/Connection"
 import { RLN } from "zkchat/lib/RLN"
 import { RLNFullProof } from "rlnjs"
-import { useReducer } from "react"
 
 export type MessageStore = {
     message: string
@@ -43,8 +41,8 @@ export class ChatRoom {
         this.chatMembers = chatMembers
         this.chatStore = []
 
-        const [messages, updateChatStore] = useReducer(this.reduceMessages, this.chatStore)
-        this.connection = new Connection(ConnectionMethod.Waku, this.rlnInstance, this.rlnInstance.identity, updateChatStore, this.contentTopic) 
+        // need to do update chat store
+        this.connection = new Connection(ConnectionMethod.Waku, this.rlnInstance, updateChatStore, this.contentTopic) 
     }
 
     /* retrieve Store Messages */
@@ -68,10 +66,6 @@ export class ChatRoom {
         //    this.chatStore[msgIndex].rln_proof = undefined 
         //    msgIndex += 1 
         // } 
-    }
-
-    public reduceMessages(state: ChatMessage[], newMessages: ChatMessage[]) {
-        return state.concat(newMessages)
     }
 
     /* basic util functions */

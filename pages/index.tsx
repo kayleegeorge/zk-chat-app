@@ -1,6 +1,6 @@
 import Head from 'next/head'
 import { Web3Provider } from '@ethersproject/providers'
-import { useEffect, useState } from 'react'
+import { useEffect, useReducer, useState } from 'react'
 import connectWallet, { getAddress } from 'zkchat/utils/connectWallet'
 import { ChatApp, ChatRoom } from 'zkchat'
 import { RLN } from 'zkchat/lib/RLN'
@@ -44,6 +44,7 @@ export default function Home() {
   //       setApp(zkChat)
   //   })()
   // }, [RLNInstance])
+  const [messages, updateChatStore] = useReducer(reduceMessages, [])
 
   // get stored alias or use pub key
   useEffect(() => {
@@ -136,9 +137,11 @@ export default function Home() {
           </>
         </Flex>
       </Flex>
-
-
     </>
 
   )
+}
+
+function reduceMessages(state: ChatMessage[], newMessages: ChatMessage[]) {
+  return state.concat(newMessages)
 }

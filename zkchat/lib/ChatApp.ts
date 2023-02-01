@@ -14,11 +14,12 @@ export default class ChatApp {
     public constructor(
         appName: string,
         provider: Web3Provider,
-        existingIdentity: string
+        existingIdentity?: string,
+        rlnIdentifier?: bigint
       ) {
         this.appName = appName
         this.provider = provider
-        this.rln = new RLN(existingIdentity, provider)
+        this.rln = new RLN(existingIdentity, rlnIdentifier, provider)
     
         this.chatRoomStore = new Map<string, ChatRoom>()
       }
@@ -35,7 +36,7 @@ export default class ChatApp {
     public async registerUser(existingIdentity?: string) {
       this.rln.constructRLNMemberTree() 
       await this.rln.registerUserOnRLNContract(this.provider) // TODO: maybe this not needed? investigate
-      return this.rln.identity
+      return this.rln.rlnInstance.identity
     }
 
     /* create chat room */

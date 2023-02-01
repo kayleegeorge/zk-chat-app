@@ -19,21 +19,21 @@ export class RLN {
     public contract: Contract
     public rlnInstance: RLNjs
     public cache: Cache
-    public identity: Identity
+    public rlnIdentifier: bigint
     private identityCommitment: bigint
     private memIndex: number
 
-    constructor(existingIdentity?: string, provider?: ethers.providers.Provider) {
+    constructor(existingIdentity?: string, rlnIdentifier?: bigint, provider?: ethers.providers.Provider) {
         // RLN
         this.contract = new ethers.Contract(RLN_ADDRESS, RLN_ABI) // might need to add back provider
         this.registry = new Registry()
-        this.identity = (existingIdentity) ? new Identity(existingIdentity) : new Identity()
-        this.rlnInstance = new RLNjs(wasmFilePath, finalZkeyPath, vkey, undefined, this.identity)
+        this.rlnInstance = new RLNjs(wasmFilePath, finalZkeyPath, vkey, rlnIdentifier, existingIdentity)
+        this.rlnIdentifier = this.rlnInstance.rlnIdentifier
         this.identityCommitments = []
         this.cache = new Cache(this.rlnInstance.rlnIdentifier)
 
         // RLN member
-        this.identityCommitment = this.identity.getCommitment() 
+        this.identityCommitment = this.rlnInstance.identity.getCommitment() 
         this.registry.addMember(this.identityCommitment)
         this.memIndex = this.registry.indexOf(this.identityCommitment)
     }
@@ -43,14 +43,14 @@ export class RLN {
     }
 
     public getIdentityAsString() {
-      return this.identity.toString()
+      return this.rlnInstance.identity.toString()
     }
 
     // generateProof 
-    public async generateRLNProof(msg: string, epochStr: string) {
-      const epoch = genExternalNullifier(epochStr)
+    public async generateRLNProof(msg: string, epoch: bigint) {
+      const epochNullifier = genExternalNullifier(epoch.toString())
       const merkleProof = await this.registry.generateMerkleProof(this.identityCommitment)
-      const proof = this.rlnInstance.genProof(msg, merkleProof, epoch)
+      const proof = this.rlnInstance.generateProof(msg, merkleProof, epochNullifier)
       return proof
     }
 
@@ -103,7 +103,7 @@ export class RLN {
         "application": appName, 
         "appIdentifier": this.rlnInstance.rlnIdentifier,
         "credentials": [{
-          "key": this.identity.getNullifier(),
+          "key": this.rlnInstance.identity.getNullifier(),
           "commitment": this.identityCommitment,
           "membershipGroups": [{
             "chainId": GOERLI, // chainge to optimism when time

@@ -1,7 +1,7 @@
 import { createLibp2p } from "zkchat/utils/createLibp2p"
 import { WakuLight } from "js-waku/lib/interfaces";
 import { UnsubscribeFunction } from "js-waku/lib/waku_filter";
-import { RLN, RLNMember } from "zkchat/lib/RLN";
+import { RLN } from "zkchat/lib/RLN";
 import { ChatMessage } from "zkchat/types/ChatMessage";
 import { dateToEpoch, utf8ToBytes } from "zkchat/utils/formatting";
 import { DecoderV0, EncoderV0, MessageV0 } from "js-waku/lib/waku_message/version_0";
@@ -24,16 +24,14 @@ export enum ProofState {
 export class Connection {
     public connectionMethod: ConnectionMethod
     private connectionInstance: Libp2pConnection | WakuConnection
-    private rlnMember: RLNMember
     private rlnInstance: RLN
 
     constructor(connectionMethod: ConnectionMethod, 
-                rlnInstance: RLN, rlnMember: RLNMember, 
+                rlnInstance: RLN, 
                 updateChatStore: (value: ChatMessage[]) => void,
                 wakuContentTopic: string, // change to optional 
                 libp2pOptions?: Libp2pOptions) {
         this.connectionMethod = connectionMethod
-        this.rlnMember = rlnMember
         this.rlnInstance = rlnInstance
         // default Waku
         this.connectionInstance = new WakuConnection(wakuContentTopic, rlnInstance, updateChatStore)
@@ -56,7 +54,7 @@ export class Connection {
         const date = new Date()
 
         const rawMessage = { message: text, epoch: dateToEpoch(date)} 
-        //const rln_proof = await this.rlnMember.generateProof(rawMessage)
+        const rln_proof = await this.rlnInstance.generateRLNProof(rawMessage.message, rawMessage.epoch)
         
         const protoMsg = new ChatMessage({
             message: utf8ToBytes(text),
